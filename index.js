@@ -1,82 +1,113 @@
 // Function to calculate age based on the date of birth
 function calculateAge(dob) {
-    var today = new Date();
-    var birthDate = new Date(dob);
-    var age = today.getFullYear() - birthDate.getFullYear();
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+
     return age;
 }
 
-// Function to validate the form submission
-function validateForm() {
-    // Get form values
-    var name = document.getElementById('name').value;
-    var email = document.getElementById('email').value;
-    var password = document.getElementById('password').value;
-    var dob = document.getElementById('dob').value;
-    var terms = document.getElementById('terms').checked;
+// Function to validate email format
+function validateEmail(element) {
+    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    if (element.validity.typeMismatch) {
+        element.setCustomValidity("Enter a valid email address");
+        element.reportValidity();
+    } else {
+        element.setCustomValidity("");
+    }
+}
+
+// Event listener for date of birth input
+const dobInput = document.getElementById("dob");
+dobInput.addEventListener("input", () => {
+    const [year, month, date] = dobInput.value.split("-");
+    const dob = new Date(year, month - 1, date); // Month is 0-indexed in JavaScript
+
+    const age = calculateAge(dob);
+
+    if (age < 18 || age > 55) {
+        dobInput.setCustomValidity("Your age must be between 18 and 55");
+    } else {
+        dobInput.setCustomValidity("");
+    }
+});
+
+// Event listener for email input
+const emailInput = document.getElementById("email");
+emailInput.addEventListener("input", () => {
+    validateEmail(emailInput);
+});
+
+// Event listener for form submission
+const regForm = document.getElementById('regForm');
+regForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById('name').value;
+    const email = emailInput.value;
+    const password = document.getElementById('password').value;
+    const dob = dobInput.value;
+    const acceptedTerms = document.getElementById('terms').checked;
 
     // Validate email format
-    var emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailPattern.test(email)) {
-        alert('Please enter a valid email address.');
-        return false;
-    }
+    validateEmail(emailInput);
 
-    // Calculate age and check if it's between 18 and 55
-    var age = calculateAge(dob);
+    // Validate date of birth
+    const dobDate = new Date(dob);
+    const age = calculateAge(dobDate);
     if (age < 18 || age > 55) {
-        alert('Age must be between 18 and 55 years.');
-        return false;
+        dobInput.setCustomValidity("Your age must be between 18 and 55");
+    } else {
+        dobInput.setCustomValidity("");
     }
 
-    // Store data in localStorage
-    var userData = {
-        name: name,
-        email: email,
-        password: password,
-        dob: dob,
-        terms: terms
-    };
+    // If the form is valid, proceed to store data
+    if (regForm.checkValidity()) {
+        const entry = {
+            name,
+            email,
+            password,
+            dob,
+            acceptedTerms
+        };
 
-    // Retrieve existing data from localStorage
-    var storedData = JSON.parse(localStorage.getItem('userData')) || [];
+        // Retrieve existing data from localStorage
+        const storedData = JSON.parse(localStorage.getItem('user-entries')) || [];
 
-    // Add new data to the array
-    storedData.push(userData);
+        // Add new data to the array
+        storedData.push(entry);
 
-    // Update localStorage with the new data
-    localStorage.setItem('userData', JSON.stringify(storedData));
+        // Update localStorage with the new data
+        localStorage.setItem('user-entries', JSON.stringify(storedData));
 
-    // Update the table
-    updateTable();
+        // Update the table
+        displayEntries();
 
-    // Reset the form
-    document.getElementById('registrationForm').reset();
+        // Reset the form
+        regForm.reset();
+    }
+});
 
-    return true;
+// Function to display entries in the table
+function displayEntries() {
+    const entries = JSON.parse(localStorage.getItem('user-entries')) || [];
+    const tableContainer = document.getElementById('table');
+    const tableHeader = "<tr><th>Name</th><th>Email</th><th>Password</th><th>Dob</th><th>Accepted terms?</th></tr>";
+    const tableRows = entries.map(entry => {
+        const { name, email, password, dob, acceptedTerms } = entry;
+        return `<tr><td>${name}</td><td>${email}</td><td>${password}</td><td>${dob}</td><td>${acceptedTerms ? 'Yes' : 'No'}</td></tr>`;
+    }).join("\n");
+
+    const table = tableHeader + tableRows;
+    tableContainer.innerHTML = table;
 }
 
-// Function to update the table with stored data
-function updateTable() {
-    // Get table body
-    var tableBody = document.querySelector('#userDataTable tbody');
-
-    // Clear existing rows
-    tableBody.innerHTML = '';
-
-    // Retrieve data from localStorage
-    var storedData = JSON.parse(localStorage.getItem('userData')) || [];
-
-    // Populate the table with the retrieved data
-    storedData.forEach(function (userData) {
-        var row = tableBody.insertRow();
-        row.insertCell(0).textContent = userData.name;
-        row.insertCell(1).textContent = userData.email;
-        row.insertCell(2).textContent = userData.password;
-        row.insertCell(3).textContent = userData.dob;
-        row.insertCell(4).textContent = userData.terms ? 'Yes' : 'No';
-    });
-}
-
-// Call updateTable on page load to populate the table with existing data
-updateTable();
+// Display entries on page load
+displayEntries();
